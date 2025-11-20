@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 
-const FREEPIK_API_KEY = process.env.NEXT_PUBLIC_FREEPIK_API_KEY;
+const FREEPIK_API_KEY = process.env.FREEPIK_API_KEY;
 
 function log(msg: any) {
   process.stdout.write("[LOG] " + JSON.stringify(msg) + "\n");
