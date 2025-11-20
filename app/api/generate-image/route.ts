@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const FREEPIK_API_KEY = process.env.NEXT_PUBLIC_FREEPIK_API_KEY
+const FREEPIK_API_KEY = process.env.FREEPIK_API_KEY
 
 const POLL_INTERVAL = 2000   // 2 seconds
 const MAX_POLLS = 10         // 20 seconds total wait
