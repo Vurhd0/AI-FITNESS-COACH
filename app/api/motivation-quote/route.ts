@@ -22,7 +22,7 @@ export async function GET() {
 
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
     // Try gemini-pro first (most widely available), fallback to gemini-1.5-pro
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const prompt = 'Generate a short, inspiring fitness motivation quote (one sentence, maximum 20 words). Return only the quote text, no additional formatting.'
 
