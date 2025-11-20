@@ -2,7 +2,9 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 
-const FREEPIK_API_KEY = process.env.FREEPIK_API_KEY;
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+// Default voice ID - you can change this to any ElevenLabs voice ID
+const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel - a popular default voice
 
 function log(msg: any) {
   process.stdout.write("[LOG] " + JSON.stringify(msg) + "\n");
@@ -16,81 +18,76 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     log({ incoming: body });
 
-    const { query, type } = body;
+    const { text, section } = body;
 
-    log("API key present? " + (FREEPIK_API_KEY ? "YES" : "NO"));
-
-    if (!FREEPIK_API_KEY) {
-      errorLog("No Freepik API key found");
-      return NextResponse.json({
-        imageUrl: `https://via.placeholder.com/800x600?text=${encodeURIComponent(
-          query
-        )}`,
-      });
+    if (!text) {
+      errorLog("No text provided");
+      return NextResponse.json(
+        { error: "Text is required" },
+        { status: 400 }
+      );
     }
 
-    const prompt =
-      type === "exercise"
-        ? `Professional fitness exercise: ${query}`
-        : `Delicious healthy meal: ${query}`;
+    log("API key present? " + (ELEVENLABS_API_KEY ? "YES" : "NO"));
 
-    log({ prompt });
+    if (!ELEVENLABS_API_KEY) {
+      errorLog("No ElevenLabs API key found");
+      return NextResponse.json(
+        { error: "ElevenLabs API key is not configured" },
+        { status: 500 }
+      );
+    }
 
-    const payload = {
-      prompt,
-      size: "1024x1024",
-      safety_filter: "l2",
-    };
+    log({ text, section });
 
-    log({ sendingPayload: payload });
-
+    // Call ElevenLabs text-to-speech API
     const response = await fetch(
-      "https://api.freepik.com/v1/ai/text-to-image/google/gemini-2-5-flash-image-preview",
+      `https://api.elevenlabs.io/v1/text-to-speech/${DEFAULT_VOICE_ID}`,
       {
         method: "POST",
         headers: {
+          "Accept": "audio/mpeg",
           "Content-Type": "application/json",
-          "x-freepik-api-key": FREEPIK_API_KEY,
+          "xi-api-key": ELEVENLABS_API_KEY,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          text: text,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.5,
+          },
+        }),
       }
     );
 
     log({ status: response.status });
 
-    const raw = await response.text();
-    log({ rawResponse: raw });
-
-    let data: any;
-    try {
-      data = JSON.parse(raw);
-    } catch (e) {
-      errorLog("JSON parse failed");
-      return NextResponse.json({
-        imageUrl: `https://via.placeholder.com/800x600?text=Invalid+Response`,
-      });
+    if (!response.ok) {
+      const errorText = await response.text();
+      errorLog({ status: response.status, error: errorText });
+      return NextResponse.json(
+        { error: "Failed to generate speech", details: errorText },
+        { status: response.status }
+      );
     }
 
-    log({ parsed: data });
+    // Get the audio blob
+    const audioBlob = await response.blob();
+    log({ blobSize: audioBlob.size });
 
-    const url =
-      data?.data?.url ||
-      data?.data?.image_url ||
-      data?.url ||
-      data?.image_url;
-
-    log({ extractedURL: url });
-
-    if (url) return NextResponse.json({ imageUrl: url });
-
-    errorLog("No valid image URL found");
-    return NextResponse.json({
-      imageUrl: `https://via.placeholder.com/800x600?text=No+Image`,
+    // Return the audio blob
+    return new NextResponse(audioBlob, {
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Content-Length": audioBlob.size.toString(),
+      },
     });
   } catch (err) {
     errorLog(err);
-    return NextResponse.json({
-      imageUrl: `https://via.placeholder.com/800x600?text=Error`,
-    });
+    return NextResponse.json(
+      { error: "Internal server error", details: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
   }
 }
